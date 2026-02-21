@@ -30,12 +30,10 @@ COPY README.md ./
 COPY app/ ./app/
 RUN uv sync --no-dev
 
-# Clean up unnecessary files to reduce image size
+# Clean up unnecessary files to reduce image size (do NOT remove torch/cuda — CPU build needs it)
 RUN rm -rf /root/.cache/uv && \
     find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
-    find /app/.venv -name "*.pyc" -delete 2>/dev/null || true && \
-    find /app/.venv/lib/python3.12/site-packages/transformers/kernels -name "*.cu" -o -name "*cuda*" 2>/dev/null | xargs rm -f 2>/dev/null || true && \
-    find /app/.venv/lib/python3.12/site-packages -type d -name "cuda" -exec rm -rf {} + 2>/dev/null || true
+    find /app/.venv -name "*.pyc" -delete 2>/dev/null || true
 
 # Pre-download the cross-encoder reranker model at build time so there is
 # no HuggingFace network call at container startup.
@@ -70,11 +68,6 @@ COPY --from=builder --chown=appuser:appuser /app/app /app/app
 # Note: If you pre-download models in builder stage, uncomment the COPY line below
 RUN mkdir -p /home/appuser/.cache/huggingface && chown appuser:appuser /home/appuser/.cache/huggingface
 # COPY --from=builder --chown=appuser:appuser /root/.cache/huggingface /home/appuser/.cache/huggingface
-
-# Remove any remaining CUDA-related files that shouldn't be in CPU-only image
-RUN find /app/.venv -name "*cuda*" -type f -delete 2>/dev/null || true && \
-    find /app/.venv -type d -name "cuda" -exec rm -rf {} + 2>/dev/null || true && \
-    find /app/.venv -name "*.cu" -delete 2>/dev/null || true
 
 # Ensure the venv's Python/scripts are on PATH
 ENV PATH="/app/.venv/bin:$PATH" \
