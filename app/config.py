@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     # API Keys
     openai_api_key: str
     tavily_api_key: str
+
+    # In Settings class
+    docling_device: Literal["cpu", "cuda", "auto"] = "cpu"
     
     # Qdrant
     qdrant_url: str = "http://localhost:6333"

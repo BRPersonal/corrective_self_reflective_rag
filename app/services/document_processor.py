@@ -1,14 +1,35 @@
 from docling.document_converter import DocumentConverter
+from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+from docling.datamodel.pipeline_options import PdfPipelineOptions,PdfFormatOption
+from docling.datamodel.base_models import InputFormat
 from docling.chunking import HybridChunker
 from pathlib import Path
 from datetime import datetime
 from loguru import logger
 import tiktoken
+from app.config import get_settings
 
 
 class DocumentProcessor:
     def __init__(self):
-        self.converter = DocumentConverter()
+
+        settings = get_settings()
+        device_str = settings.docling_device
+        # Explicitly configure docling to use CPU
+        accelerator_options = AcceleratorOptions(
+            device=AcceleratorDevice.CPU if device_str == "cpu" else AcceleratorDevice.AUTO
+        )
+        
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.accelerator_options = accelerator_options
+        
+        self.converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(
+                    pipeline_options=pipeline_options,
+                )
+            }
+        )      
         self.chunker = HybridChunker()
         self.tokenizer = tiktoken.get_encoding("cl100k_base")
     
