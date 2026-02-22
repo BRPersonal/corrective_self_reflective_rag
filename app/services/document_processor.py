@@ -1,6 +1,6 @@
-from docling.document_converter import DocumentConverter
+from docling.document_converter import DocumentConverter,PdfFormatOption
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
-from docling.datamodel.pipeline_options import PdfPipelineOptions,PdfFormatOption
+from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.datamodel.base_models import InputFormat
 from docling.chunking import HybridChunker
 from pathlib import Path
