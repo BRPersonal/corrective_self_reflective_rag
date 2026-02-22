@@ -322,6 +322,38 @@ aws ecr delete-repository \
 | `pydantic ValidationError` at startup | Missing required env var | Check `eb setenv` — `OPENAI_API_KEY` and `TAVILY_API_KEY` are required |
 | Uploaded files disappear | Ephemeral EC2 storage | Expected — file uploads are transient; vectors persist in Qdrant Cloud |
 
+### ECR pull failure
+
+When you see "Instance deployment failed to download the Docker image", the EC2 instance cannot pull from ECR. Even with `AmazonEC2ContainerRegistryReadOnly` on the role, check:
+
+1. **Get the actual error** — SSH into the instance and inspect the engine log:
+   ```bash
+   eb ssh
+   sudo cat /var/log/eb-engine.log
+   ```
+   Look for `docker pull` output, `denied`, `403`, `no basic auth`, or network errors.
+
+2. **Instance profile vs role** — The policy must be on the **role** used by the instance profile. Verify the environment uses the correct profile:
+   ```bash
+   aws elasticbeanstalk describe-configuration-settings \
+     --application-name crag-rag-app \
+     --environment-name crag-rag-prod \
+     --query 'ConfigurationSettings[0].OptionSettings[?OptionName==`IamInstanceProfile`]'
+   ```
+   Ensure the value is `aws-elasticbeanstalk-ec2-role` (or your profile name).
+
+3. **Instance profile exists** — EB no longer auto-creates `aws-elasticbeanstalk-ec2-role`. Confirm both the role and instance profile exist:
+   ```bash
+   aws iam get-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role
+   aws iam list-attached-role-policies --role-name aws-elasticbeanstalk-ec2-role
+   ```
+
+4. **VPC / network** — If the instance is in a private subnet without a NAT gateway, it cannot reach ECR. Either:
+   - Use the default VPC (public subnet) for single-instance mode, or
+   - Add VPC endpoints for ECR (`com.amazonaws.region.ecr.api`, `com.amazonaws.region.ecr.dkr`) and S3 (for ECR layer storage).
+
+5. **Region** — Ensure the ECR image URI in `Dockerrun.aws.json` matches the region where the image was pushed (e.g. `us-east-2`).
+
 ---
 
 ## Key Design Notes
